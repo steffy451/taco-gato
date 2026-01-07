@@ -64,9 +64,6 @@ button {
 </head>
 
 <body>
-<audio id="golpe">
-  <source src="golpe.mp3" type="audio/mpeg">
-</audio>
 
 <div id="estado">Cargando...</div>
 <button id="btn" disabled>¡MANOTAZO!</button>
@@ -77,7 +74,9 @@ button {
 </div>
 
 <div id="historial"></div>
-
+<audio id="golpe">
+  <source src="golpe.mp3" type="audio/mpeg">
+</audio>
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
@@ -165,13 +164,15 @@ btn.onclick = async () => {
     navigator.vibrate(200);
   }
 
-  document.getElementById("golpe").currentTime = 0;
-  document.getElementById("golpe").play();
+  const sonido = document.getElementById("golpe");
+  sonido.currentTime = 0;
+  sonido.play();
 
   const clickRef = ref(db, `salas/${salaId}/clicks`);
   await push(clickRef, nombre);
 
 };
+
 
 
 
