@@ -156,13 +156,13 @@ onValue(partidaRef, (snapshot) => {
   }).join("");
 });
 
-btn.onclick = () => {
+btn.onclick = async () => {
   if (navigator.vibrate) {
     navigator.vibrate(200);
   }
 
   const clickRef = ref(db, `salas/${salaId}/clicks`);
-  push(clickRef, nombre);
+  await push(clickRef, nombre);
 };
 
 
