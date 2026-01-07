@@ -105,6 +105,8 @@ if (!nombre) {
 
 const btn = document.getElementById("btn");
 const estadoEl = document.getElementById("estado");
+const sonido = document.getElementById("golpe");
+sonido.load();
 const historialEl = document.getElementById("historial");
 
 async function configurarNuevaPartida() {
@@ -172,9 +174,6 @@ btn.onclick = async () => {
   await push(clickRef, nombre);
 
 };
-
-
-
 
 document.getElementById("reset").onclick = async () => {
   const snapshot = await get(ref(db, `salas/${salaId}/max`));
