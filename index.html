@@ -1,23 +1,72 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Taco Gato Digital</title>
+
 <style>
-body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-direction: column; background: #1a1a1a; color: #fff; text-align: center; }
-#estado { padding: 20px; font-size: 1.5rem; font-weight: bold; background: #222; }
-#btn { flex: 1; font-size: 3rem; background: #ff4757; color: white; border: none; cursor: pointer; transition: 0.2s; }
-#btn:disabled { background: #333; color: #777; }
-#controles { display: flex; gap: 5px; padding: 10px; }
-#historial { height: 200px; overflow-y: auto; background: #000; padding: 10px; font-family: monospace; text-align: left; }
-.perdedor { color:#ff4757; font-weight:bold; margin-left:10px; }
+body {
+  margin: 0;
+  font-family: sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+  color: #fff;
+  text-align: center;
+}
+#estado {
+  padding: 20px;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background: #222;
+}
+#btn {
+  flex: 1;
+  font-size: 3rem;
+  background: #ff4757;
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: 0.2s;
+}
+#controles {
+  display: flex;
+  gap: 5px;
+  padding: 10px;
+}
+button {
+  flex: 1;
+  padding: 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  color: white;
+  font-weight: bold;
+}
+#historial {
+  height: 200px;
+  overflow-y: auto;
+  background: #000;
+  padding: 10px;
+  font-family: monospace;
+  text-align: left;
+}
+.perdedor {
+  color: #ff4757;
+  font-weight: bold;
+  border: 1px solid #ff4757;
+  padding: 2px 5px;
+  margin-left: 10px;
+}
 </style>
 </head>
+
 <body>
 
 <div id="estado">Cargando...</div>
-<button id="btn">¡MANOTAZO!</button>
+<button id="btn" disabled>¡MANOTAZO!</button>
 
 <div id="controles">
   <button id="reset" style="background:#2ed573;">Nueva Ronda</button>
@@ -27,26 +76,28 @@ body { margin: 0; font-family: sans-serif; height: 100vh; display: flex; flex-di
 <div id="historial"></div>
 
 <script type="module">
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, doc, setDoc, updateDoc, arrayUnion, onSnapshot, getDoc } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { getDatabase, ref, set, onValue, push, get } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBJExPDhQj6kRz1f_iLKMvFrNZq55OU9xo",
+  apiKey: "taco-gato-demo",
   authDomain: "taco-gato-eee4b.firebaseapp.com",
+  databaseURL: "https://taco-gato-eee4b-default-rtdb.firebaseio.com",
   projectId: "taco-gato-eee4b",
   appId: "1:128509807550:web:e1daba4a406764fe2d87ef"
 };
 
 const app = initializeApp(firebaseConfig);
-const fs = getFirestore(app);
+const db = getDatabase(app);
 
-const salaId = "sala_unica";
-const salaRef = doc(fs, "partidas", salaId);
+const salaId = "partida_global";
+const partidaRef = ref(db, `salas/${salaId}`);
 
 let nombre = localStorage.getItem("usuario");
 if (!nombre) {
   nombre = prompt("Tu nombre para jugar:");
-  if (!nombre) nombre = "Jugador" + Math.floor(Math.random()*100);
+  if (!nombre) nombre = "Jugador" + Math.floor(Math.random() * 100);
   localStorage.setItem("usuario", nombre);
 }
 
@@ -54,7 +105,7 @@ const btn = document.getElementById("btn");
 const estadoEl = document.getElementById("estado");
 const historialEl = document.getElementById("historial");
 
-async function iniciarSala() {
+async function configurarNuevaPartida() {
   let n = prompt("¿Cuántas personas van a jugar?");
   let max = parseInt(n);
 
@@ -62,81 +113,66 @@ async function iniciarSala() {
     max = 3;
   }
 
-  await setDoc(salaRef, {
+  await set(partidaRef, {
     max: max,
-    clicks: []
+    clicks: {}
   });
 }
 
-await iniciarSala();
+await configurarNuevaPartida();
 
-function actualizarUI(data) {
-  const clicks = data.clicks || [];
-  const max = data.max;
+onValue(partidaRef, (snapshot) => {
+  const data = snapshot.val();
 
+  if (!data || !data.max) {
+    estadoEl.innerText = "Configurando...";
+    configurarNuevaPartida();
+    return;
+  }
+
+  const clicks = data.clicks ? Object.values(data.clicks) : [];
   const yaClick = clicks.includes(nombre);
-  const terminada = clicks.length >= max;
-
-  estadoEl.innerText = terminada
-    ? "¡RONDA CERRADA!"
-    : `Jugadores: ${clicks.length} / ${max}`;
+  const terminada = clicks.length >= data.max;
 
   btn.disabled = yaClick || terminada;
 
   btn.innerText = yaClick
-    ? "YA DISTE MANOTAZO"
+    ? "ESPERANDO..."
     : terminada
-      ? "BLOQUEADO"
+      ? "RONDA CERRADA"
       : "¡MANOTAZO!";
 
   btn.style.background = btn.disabled ? "#333" : "#ff4757";
 
-  historialEl.innerHTML = clicks.map((n,i) => {
-    const esUltimo = i === max - 1;
+  estadoEl.innerText = terminada
+    ? "¡RONDA CERRADA!"
+    : `Jugadores: ${clicks.length} / ${data.max}`;
+
+  historialEl.innerHTML = clicks.map((n, i) => {
+    const esUltimo = i === data.max - 1;
     return `<div>${i+1}. ${n} ${esUltimo ? '<span class="perdedor">¡PIERDE!</span>' : ''}</div>`;
   }).join("");
-}
-
-onSnapshot(salaRef, (snapshot) => {
-  const data = snapshot.data();
-  if (!data) return;
-  actualizarUI(data);
 });
 
-btn.onclick = async () => {
-  const snap = await getDoc(salaRef);
-  const data = snap.data();
-
-  if (!btn.disabled && data) {
-    await updateDoc(salaRef, {
-      clicks: arrayUnion(nombre)
-    });
-  }
+btn.onclick = () => {
+  const clickRef = ref(db, `salas/${salaId}/clicks`);
+  push(clickRef, nombre);
 };
 
 document.getElementById("reset").onclick = async () => {
-  const snap = await getDoc(salaRef);
-  const data = snap.data();
+  const snapshot = await get(ref(db, `salas/${salaId}/max`));
+  const maxActual = snapshot.val() || 3;
 
-  if (data) {
-    await setDoc(salaRef, {
-      max: data.max,
-      clicks: []
-    });
-  }
+  await set(partidaRef, {
+    max: maxActual,
+    clicks: {}
+  });
 };
 
-document.getElementById("changeMax").onclick = async () => {
-  let n = prompt("Nuevo número de jugadores:");
-  let max = parseInt(n);
-
-  if (Number.isInteger(max) && max > 0) {
-    await setDoc(salaRef, {
-      max: max,
-      clicks: []
-    });
-  }
+document.getElementById("changeMax").onclick = () => {
+  configurarNuevaPartida();
 };
+
 </script>
 
 </body>
