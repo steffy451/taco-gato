@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Taco Gato Digital</title>
+<title>Taco Gato</title>
 
 <style>
 body {
@@ -119,13 +119,15 @@ async function configurarNuevaPartida() {
   });
 }
 
-await configurarNuevaPartida();
+const snap = await get(partidaRef);
+if (!snap.exists()) {
+  await configurarNuevaPartida();
+}
 
 onValue(partidaRef, (snapshot) => {
   const data = snapshot.val();
 
   if (!data || !data.max) {
-    estadoEl.innerText = "Configurando...";
     configurarNuevaPartida();
     return;
   }
