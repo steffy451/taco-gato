@@ -157,13 +157,19 @@ onValue(partidaRef, (snapshot) => {
 });
 
 btn.onclick = async () => {
+
   if (navigator.vibrate) {
     navigator.vibrate(200);
   }
 
+  const audio = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+  audio.play().catch(()=>{});
+
   const clickRef = ref(db, `salas/${salaId}/clicks`);
   await push(clickRef, nombre);
+
 };
+
 
 
 document.getElementById("reset").onclick = async () => {
