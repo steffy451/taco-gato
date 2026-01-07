@@ -157,9 +157,14 @@ onValue(partidaRef, (snapshot) => {
 });
 
 btn.onclick = () => {
+  if (navigator.vibrate) {
+    navigator.vibrate(200);
+  }
+
   const clickRef = ref(db, `salas/${salaId}/clicks`);
   push(clickRef, nombre);
 };
+
 
 document.getElementById("reset").onclick = async () => {
   const snapshot = await get(ref(db, `salas/${salaId}/max`));
